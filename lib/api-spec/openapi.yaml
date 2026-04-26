@@ -1,0 +1,215 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: wallet
+    description: Wallet scoring operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /wallet/check:
+    post:
+      operationId: checkWallet
+      tags: [wallet]
+      summary: Score a Base wallet
+      description: |
+        Pulls live on-chain data from Etherscan V2 for the Base network
+        (chainId 8453) and returns activity stats plus eligibility for the
+        Top 2.5M Base wallets criteria.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckWalletRequest"
+      responses:
+        "200":
+          description: Wallet stats computed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletStats"
+        "400":
+          description: Invalid wallet address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Etherscan rate limit hit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /wallet/criteria:
+    get:
+      operationId: getEligibilityCriteria
+      tags: [wallet]
+      summary: Get the Top 2.5M eligibility criteria
+      description: Returns the thresholds used to determine wallet eligibility.
+      responses:
+        "200":
+          description: Criteria
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilityCriteria"
+  /wallet/leaderboard:
+    get:
+      operationId: getRecentChecks
+      tags: [wallet]
+      summary: Recent wallet checks
+      description: |
+        Returns the most recently scored wallets in this session, sorted by
+        most recent first. Used to power the live activity feed.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Recent checks
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RecentCheck"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    CheckWalletRequest:
+      type: object
+      required: [address]
+      properties:
+        address:
+          type: string
+          description: Ethereum address (0x + 40 hex)
+          example: "0x0000000000000000000000000000000000000000"
+    WalletStats:
+      type: object
+      required:
+        - address
+        - eligible
+        - tx_count
+        - contract_count
+        - active_months
+        - active_days
+        - native_volume_eth
+        - gasfee_eth
+        - current_balance_eth
+        - score
+        - tier
+      properties:
+        address:
+          type: string
+        eligible:
+          type: boolean
+        tx_count:
+          type: integer
+        contract_count:
+          type: integer
+        active_months:
+          type: integer
+        active_days:
+          type: integer
+        native_volume_eth:
+          type: number
+        gasfee_eth:
+          type: number
+        current_balance_eth:
+          type: number
+        first_activity:
+          type: string
+          nullable: true
+          description: ISO timestamp of first transaction
+        last_activity:
+          type: string
+          nullable: true
+          description: ISO timestamp of latest transaction
+        score:
+          type: integer
+          minimum: 0
+          maximum: 1000
+          description: Composite 0-1000 score derived from activity metrics
+        tier:
+          type: string
+          enum: [unranked, bronze, silver, gold, platinum, diamond]
+          description: Tier label derived from the score
+    EligibilityCriteria:
+      type: object
+      required:
+        - contract_count
+        - tx_count
+        - active_months
+        - native_volume_eth
+      properties:
+        contract_count:
+          type: integer
+        tx_count:
+          type: integer
+        active_months:
+          type: integer
+        native_volume_eth:
+          type: number
+    RecentCheck:
+      type: object
+      required: [address, score, tier, eligible, checked_at]
+      properties:
+        address:
+          type: string
+        score:
+          type: integer
+        tier:
+          type: string
+        eligible:
+          type: boolean
+        checked_at:
+          type: string
+          description: ISO timestamp
