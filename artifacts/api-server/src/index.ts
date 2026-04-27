@@ -8,7 +8,8 @@ const rawPort = process.env["PORT"];
 if (rawPort) {
   const port = Number(rawPort);
   if (!Number.isNaN(port) && port > 0) {
-    app.listen(port, (err: Error | undefined) => {
+    // @ts-ignore
+    app.listen(port, (err: any) => {
       if (err) {
         logger.error({ err }, "Error listening on port");
         process.exit(1);
