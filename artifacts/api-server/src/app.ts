@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
-import pinoHttp = require("pino-http");
+import pinoHttpPkg from "pino-http";
+const pinoHttp = pinoHttpPkg as any;
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 
