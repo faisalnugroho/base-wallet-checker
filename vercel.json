@@ -4,7 +4,8 @@
   "buildCommand": "pnpm --filter @workspace/api-server build",
   "functions": {
     "artifacts/api-server/dist/index.mjs": {
-      "runtime": "nodejs20.x"
+      "memory": 1024,
+      "maxDuration": 10
     }
   },
   "routes": [
